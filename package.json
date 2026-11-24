@@ -1,0 +1,8 @@
+{
+  "name": "payoff",
+  "private": true,
+  "type": "module",
+  "description": "Debt payoff tracker: GitHub Pages app + Firebase sync + daily push reminders",
+  "scripts": { "remind": "node scripts/remind.mjs" },
+  "dependencies": { "firebase-admin": "12.1.0" }
+}

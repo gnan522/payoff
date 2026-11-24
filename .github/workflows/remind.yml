@@ -1,0 +1,24 @@
+name: Daily payment reminders
+on:
+  schedule:
+    - cron: '0 13 * * *'   # 13:00 UTC = 8 am Toronto in winter, 9 am in summer
+  workflow_dispatch:
+    inputs:
+      test:
+        description: 'Send a test notification to every device'
+        type: boolean
+        default: false
+jobs:
+  remind:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install --no-audit --no-fund
+      - run: node scripts/remind.mjs
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          APP_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/
+          TEST: ${{ inputs.test }}

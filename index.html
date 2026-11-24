@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Payoff">
+<meta name="theme-color" content="#00a862">
+<title>Payoff</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+<link rel="icon" href="./icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* VOICE work: a personal payoff app, calm and exact, built for one thumb
+   IDEA a banking app's home screen: one big "next payment" card, then everything else a tab away
+   PICTURE the next-payment card with its amount and "I paid" button, over a bar of debt paid vs left
+   COLOUR white, ink #0b0b10, signal green #00a862 card, mist #eafaf2, red for due-soon and shortfall
+   TYPE Space Grotesk 500/700 + Inter
+   LAYOUT phone column up to 640px; app bar on top, five tabs on the bottom, bottom sheets for input */
+:root{color-scheme:light dark;--bg:light-dark(#f4f7f5,#07130d);--card:light-dark(#ffffff,#0d1d15);--ink:light-dark(#0b0b10,#e6f3ec);--mute:light-dark(#5a6260,#9db3a7);--g:#00a862;--gd:light-dark(#007a47,#3fd393);--mist:light-dark(#eafaf2,#13291e);--line:light-dark(#dfe8e3,#1f3a2c);--red:light-dark(#c8321f,#ff7a66);--want:light-dark(#fde3dc,#3a1610)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--ink);font:16px/1.5 Inter,system-ui,sans-serif;overflow-x:clip}
+h1,h2,h3,.num{font-family:"Space Grotesk",system-ui,sans-serif;letter-spacing:-.02em}
+h2{font-size:26px;line-height:1.1;margin:4px 0 6px;font-weight:700}
+h3{font-size:17px;margin:0 0 2px;font-weight:700}
+p{margin:0 0 8px}
+.app{max-width:640px;margin:0 auto;min-height:100%;padding:0 max(16px,env(safe-area-inset-right)) calc(96px + env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}
+.bar{position:sticky;top:0;z-index:5;background:var(--bg);display:flex;justify-content:space-between;align-items:center;padding:calc(10px + env(safe-area-inset-top)) 0 10px;margin:0 -2px}
+.bar b{font:700 22px "Space Grotesk",sans-serif}
+.sync{font-size:13px;font-weight:600;color:var(--mute);display:flex;align-items:center;gap:6px}
+.sync::before{content:"";width:9px;height:9px;border-radius:50%;background:var(--mute)}
+.sync.ok::before{background:var(--g)}.sync.loc::before{background:#e0a400}
+.view{display:none}.view.on{display:block;animation:fade .18s ease-out}
+@keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1}}
+@media (prefers-reduced-motion:reduce){.view.on{animation:none}.sheet{transition:none!important}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:12px}
+.next{background:var(--g);color:#04170d;border:0;padding:20px}
+.next .lab{font-size:14px;font-weight:600;opacity:.8}
+.next .amt{font:700 clamp(40px,12vw,56px)/1 "Space Grotesk",sans-serif;margin:6px 0 4px;white-space:nowrap}
+.next .to{font-size:18px;font-weight:600}
+.next .when{font-size:15px;margin-top:2px}
+.next .note{font-size:14px;margin:10px 0 0;opacity:.9}
+.next button.big{margin-top:14px;width:100%;background:#04170d;color:#fff;border:0;min-height:54px;font-size:17px;border-radius:12px}
+.prog{height:14px;background:var(--mist);border-radius:7px;overflow:hidden;margin:8px 0 4px}
+.prog i{display:block;height:100%;background:var(--g);border-radius:7px}
+.stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:12px}
+.stats div{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+.stats .num{font-size:24px;font-weight:700;white-space:nowrap;display:block}
+.stats small{font-size:13px;color:var(--mute)}
+.stats .bad .num{color:var(--red)}
+.sub{font-size:14px;color:var(--mute)}
+.alert{background:var(--want);border-radius:14px;padding:12px 14px;margin-bottom:12px;font-size:15px}
+.alert button{margin-top:8px}
+.list{list-style:none;margin:0;padding:0}
+.row{display:grid;grid-template-columns:3.6em minmax(0,1fr) auto;gap:2px 12px;align-items:center;padding:12px 0;border-top:1px solid var(--line);cursor:pointer}
+.row:first-child{border-top:0}
+.row .d{font:700 17px/1.05 "Space Grotesk",sans-serif;white-space:nowrap;text-align:center}
+.row .d small{display:block;font:500 12px Inter,sans-serif;color:var(--mute)}
+.row.soon .d{color:var(--red)}.row.done .d{color:var(--gd)}
+.row .a{font-weight:700;white-space:nowrap;text-align:right}
+.chip{display:inline-block;font-size:12px;font-weight:700;padding:2px 8px;border-radius:99px;white-space:nowrap;margin-top:2px}
+.chip.ok{background:var(--g);color:#04170d}.chip.part{background:var(--want);color:var(--ink)}.chip.due{background:var(--mist);color:var(--ink)}
+button{font:600 15px Inter,sans-serif;min-height:44px;padding:0 16px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer;touch-action:manipulation}
+button.pri{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+button.full{width:100%}
+button:active{transform:scale(.98)}
+input:focus-visible,button:focus-visible,select:focus-visible{outline:3px solid var(--gd);outline-offset:2px}
+input[type=number],input[type=date],select{font:16px Inter,sans-serif;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);min-height:48px;width:100%}
+input[type=range]{width:100%;accent-color:var(--gd);min-height:44px}
+input[type=checkbox]{width:24px;height:24px;accent-color:var(--gd);flex:none}
+label.l{display:block;font-weight:600;font-size:15px;margin:14px 0 6px}
+.dc .top{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+.dc .bal{font:700 24px "Space Grotesk",sans-serif;white-space:nowrap}
+.dc .bar2{height:10px;background:var(--mist);border-radius:5px;overflow:hidden;margin:10px 0 6px}
+.dc .bar2 i{display:block;height:100%;background:var(--g)}
+.ord{font:700 12px Inter,sans-serif;background:var(--ink);color:var(--bg);border-radius:99px;padding:2px 8px;margin-right:6px;vertical-align:2px}
+.nospend{font-size:12px;font-weight:700;color:var(--red);border:1px solid var(--red);border-radius:99px;padding:1px 7px;margin-left:6px;white-space:nowrap;vertical-align:2px}
+.seg{display:flex;gap:6px}.seg button{flex:1;padding:0 8px}
+.seg button[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.big2{font:700 34px/1.05 "Space Grotesk",sans-serif;margin:4px 0}
+.fig{position:relative;min-height:240px}
+.fig>svg{position:absolute;inset:0;width:100%;height:100%}
+svg text{font:12px Inter,sans-serif;fill:var(--mute);paint-order:stroke;stroke:var(--card);stroke-width:4px}
+.leg{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:13px;margin-top:6px}
+.leg span{display:inline-flex;align-items:center;gap:5px}.leg i{width:10px;height:10px;border-radius:2px;display:inline-block}
+.gr{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 12px;padding:10px 0;border-top:1px solid var(--line)}
+.gr .v{font:700 17px "Space Grotesk",sans-serif;color:var(--gd);white-space:nowrap}
+.gr .why{grid-column:1/3;font-size:14px;color:var(--mute)}
+.mv label{display:flex;gap:12px;align-items:center;padding:12px 0;border-top:1px solid var(--line);cursor:pointer}
+.mv label:first-child{border-top:0}
+.mv label span{flex:1}.mv label.on span{text-decoration:line-through;color:var(--mute)}
+.nwr{display:grid;grid-template-columns:minmax(0,1fr) 6.2em;gap:4px 10px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
+.nwr input{min-height:40px;padding:6px 8px;text-align:right}
+.nwr.cut .nm{text-decoration:line-through;color:var(--mute)}
+.grp{font:700 15px "Space Grotesk",sans-serif;margin:14px 0 2px;color:var(--mute)}
+.hr{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:10px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:8;background:var(--card);border-top:1px solid var(--line);padding:6px max(8px,env(safe-area-inset-left)) calc(6px + env(safe-area-inset-bottom))}
+.tabs div{max-width:640px;margin:0 auto;display:grid;grid-template-columns:repeat(5,minmax(0,1fr))}
+.tabs button{border:0;background:none;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:12px;color:var(--mute);padding:4px 0;min-height:52px}
+.tabs button svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.tabs button[aria-current=page]{color:var(--gd)}
+.scrim{position:fixed;inset:0;background:#0008;z-index:20;opacity:0;pointer-events:none;transition:opacity .2s}
+.scrim.on{opacity:1;pointer-events:auto}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:21;background:var(--card);border-radius:20px 20px 0 0;padding:10px max(18px,env(safe-area-inset-left)) calc(18px + env(safe-area-inset-bottom));max-width:640px;margin:0 auto;transform:translateY(105%);transition:transform .22s ease-out;max-height:90%;overflow:auto}
+.sheet.on{transform:none}
+.sheet .grab{width:40px;height:5px;border-radius:3px;background:var(--line);margin:0 auto 12px}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.chips button{min-height:38px;font-size:14px;padding:0 12px;border-radius:99px}
+.sbtn{display:grid;grid-template-columns:1fr 2fr;gap:10px;margin-top:18px}
+.toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom));transform:translate(-50%,20px);z-index:30;background:var(--ink);color:var(--bg);border-radius:12px;padding:10px 12px 10px 16px;display:flex;gap:12px;align-items:center;opacity:0;pointer-events:none;transition:.2s;width:min(92vw,420px)}
+.toast.on{opacity:1;transform:translate(-50%,0);pointer-events:auto}
+.toast span{flex:1;font-size:15px}
+.toast button{background:none;color:var(--g);border:0;min-height:36px;font-weight:700}
+
+.screen[hidden]{display:none!important}
+.center{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:24px max(20px,env(safe-area-inset-left));max-width:440px;margin:0 auto;text-align:center}
+.logo{font:700 40px "Space Grotesk",sans-serif;color:var(--gd);letter-spacing:-.03em}
+.err{color:var(--red);font-size:14px;margin:8px 0 0;min-height:1em}
+button.link{border:0;background:none;color:var(--gd);min-height:40px;padding:0;margin-top:6px}
+input[type=email],input[type=password]{font:16px Inter,sans-serif;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);min-height:48px;width:100%}
+textarea{font:13px ui-monospace,Menlo,monospace;width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);margin-top:8px}
+.sync{font-size:13px;font-weight:600;color:var(--mute);display:flex;align-items:center;gap:6px}
+.sync.ok::before{background:var(--g)}.sync.wait::before{background:#e0a400}.sync.off::before{background:var(--red)}
+</style>
+</head>
+<body>
+<div class="screen" id="s-loading"><div class="center"><b class="logo">Payoff</b><p class="sub">Loading…</p></div></div>
+
+<div class="screen" id="s-auth" hidden>
+  <div class="center">
+    <b class="logo">Payoff</b>
+    <p class="sub">Your debt payoff tracker. Sign in to sync across your devices.</p>
+    <form id="authForm" class="card" style="text-align:left;width:100%">
+      <label class="l" for="email" style="margin-top:0">Email</label>
+      <input type="email" id="email" autocomplete="username" required>
+      <label class="l" for="pw">Password</label>
+      <input type="password" id="pw" autocomplete="current-password" minlength="6" required>
+      <p class="err" id="authErr"></p>
+      <button class="pri full" type="submit" id="authBtn" style="margin-top:14px">Sign in</button>
+      <button class="full" type="button" id="authSwitch" style="margin-top:8px">New here? Create an account</button>
+      <button class="link" type="button" id="forgot">Forgot password?</button>
+    </form>
+  </div>
+</div>
+
+<div class="screen" id="s-setup" hidden>
+  <div class="app">
+    <div class="bar"><b>Set up</b><button class="link" id="signOut1" type="button">Sign out</button></div>
+    <div class="card">
+      <h3>Paste your setup code</h3>
+      <p class="sub">The setup code has your debts, balances, budget and any payments you've already logged. It's saved to your account only.</p>
+      <textarea id="importBox" rows="8" aria-label="Setup code" spellcheck="false"></textarea>
+      <p class="err" id="importErr"></p>
+      <button class="pri full" id="importBtn" type="button">Import</button>
+    </div>
+  </div>
+</div>
+
+<div class="screen" id="s-app" hidden>
+<div class="app">
+  <div class="bar"><b id="title">Today</b><span class="sync" id="sync"><span>Syncing</span></span></div>
+
+  <section class="view" id="v-today">
+    <div class="card next" id="nextCard"></div>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:baseline"><h3>Debt paid off</h3><span class="sub" id="progPct"></span></div>
+      <div class="prog"><i id="progBar"></i></div>
+      <div class="sub" id="progLab"></div>
+    </div>
+    <div class="stats" id="stats"></div>
+    <div id="shortAlert"></div>
+    <div id="notifPrompt"></div>
+    <div class="card"><h3>Coming up</h3><p class="sub">Tap a payment to log it.</p><ul class="list" id="todo"></ul></div>
+    <button class="full" id="logAny" type="button">+ Log a different payment</button>
+  </section>
+
+  <section class="view" id="v-debts">
+    <p class="sub">Balances drop as you log payments. When a statement arrives, tap <b>Update balance</b> and enter the statement balance so the interest is included.</p>
+    <div id="debtCards"></div>
+  </section>
+
+  <section class="view" id="v-plan">
+    <div class="card">
+      <label class="l" for="budget" style="margin-top:0">Monthly debt budget (not counting Amex)</label>
+      <div class="big2" id="budgetOut"></div>
+      <input type="range" id="budget" step="25">
+      <p class="sub" id="budgetHint"></p>
+    </div>
+    <div class="card">
+      <h3 id="chartTitle">When each debt is gone</h3>
+      <p class="sub">The dashed line shows paying only the minimums.</p>
+      <div class="fig" id="fig"><svg id="chart" role="img" aria-label="Projected balances"></svg></div>
+      <div class="leg" id="legend"></div>
+    </div>
+    <div class="card" id="gapCard"><h3 id="gapTitle"></h3><p class="sub" id="gapIntro"></p><div id="gapRows"></div></div>
+    <div class="card">
+      <label class="l" style="margin-top:0">Amex (your everyday card)</label>
+      <div class="seg" id="amexMode"><button type="button" data-m="full">Pay in full</button><button type="button" data-m="payoff">Pay it down</button></div>
+      <label class="l" for="amexStmt">Latest Amex statement balance</label>
+      <input type="number" id="amexStmt" step="0.01" min="0" inputmode="decimal">
+      <label class="l" for="save">Savings each month (at least $250)</label>
+      <input type="number" id="save" min="250" step="25" inputmode="decimal">
+    </div>
+    <div class="card" id="notifCard">
+      <h3>Phone notifications</h3>
+      <p class="sub" id="notifStatus"></p>
+      <div class="sbtn" id="notifBtns"></div>
+    </div>
+    <div class="card">
+      <h3>Account and backup</h3>
+      <p class="sub" id="acct"></p>
+      <div class="sbtn"><button type="button" id="copyBackup">Copy backup</button><button type="button" id="signOut">Sign out</button></div>
+      <p class="sub" id="backupMsg"></p>
+    </div>
+    <p class="sub">Interest rates marked as estimates and minimum payments are worked out from each lender's usual formula, so always check the amount on the statement. This isn't financial advice.</p>
+  </section>
+
+  <section class="view" id="v-spend">
+    <div class="card"><h3 id="mvTitle"></h3><p class="sub">These still charge the cards you've stopped using. Move each one to Amex or cancel it, then tick it off.</p><div class="mv" id="mv"></div></div>
+    <div class="card"><h3 id="nwTitle"></h3><p class="sub">Monthly amounts. Set a target for each want. A target of 0 means cancel it.</p><div id="nw"></div></div>
+    <div class="card"><h3>Income</h3>
+      <label class="l" for="inc1">Take-home pay</label><input type="number" id="inc1" step="0.01" inputmode="decimal">
+      <label class="l" for="inc2">Rental income after its costs</label><input type="number" id="inc2" step="0.01" inputmode="decimal">
+    </div>
+  </section>
+
+  <section class="view" id="v-history">
+    <div class="card"><h3>Payments you've logged</h3><div id="hist"></div></div>
+    <div class="card"><h3>Savings transfers</h3><div id="savHist"></div></div>
+  </section>
+</div>
+
+<nav class="tabs" aria-label="Sections"><div>
+  <button data-tab="today" type="button"><svg viewBox="0 0 24 24"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>Today</button>
+  <button data-tab="debts" type="button"><svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20M6 15h4"/></svg>Debts</button>
+  <button data-tab="plan" type="button"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Plan</button>
+  <button data-tab="spend" type="button"><svg viewBox="0 0 24 24"><path d="M6 2l1.5 4M18 2l-1.5 4M3 6h18l-2 14H5z"/><path d="M9 11h6"/></svg>Spending</button>
+  <button data-tab="history" type="button"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>History</button>
+</div></nav>
+</div>
+
+<div class="scrim" id="scrim"></div>
+<div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="shTitle"><div class="grab"></div><div id="shBody"></div></div>
+<div class="toast" id="toast" role="status"><span id="toastMsg"></span><button id="undoBtn" type="button">Undo</button></div>
+
+<script src="./firebase-config.js"></script>
+<script type="module" src="./app.js"></script>
+</body>
+</html>
