@@ -6,7 +6,25 @@ import { merge, torontoToday, dueReminders, money } from '../logic.js';
 
 const raw = process.env.FIREBASE_SERVICE_ACCOUNT;
 if (!raw) { console.error('Missing FIREBASE_SERVICE_ACCOUNT secret.'); process.exit(1); }
-admin.initializeApp({ credential: admin.credential.cert(JSON.parse(raw)) });
+// Clean up common copy-paste problems (smart quotes, stray BOM, trailing commas, wrapping quotes).
+function parseKey(text) {
+  let t = text.replace(/^\uFEFF/, '').trim()
+    .replace(/[\u201C\u201D]/g, '"').replace(/[\u2018\u2019]/g, "'")
+    .replace(/,\s*([}\]])/g, '$1');
+  if (t.startsWith("'") && t.endsWith("'")) t = t.slice(1, -1);
+  try { return JSON.parse(t); }
+  catch (e) {
+    // Show the shape around the problem with every letter and digit masked, so nothing secret is printed.
+    const m = /position (\d+)/.exec(e.message); const pos = m ? +m[1] : 0;
+    const mask = s => s.replace(/[A-Za-z0-9+/=_-]/g, 'x').replace(/\n/g, '\\n');
+    console.error(`The FIREBASE_SERVICE_ACCOUNT secret isn't valid JSON (${e.message}).`);
+    console.error(`Length ${t.length}. Starts with ${JSON.stringify(mask(t.slice(0, 12)))}, ends with ${JSON.stringify(mask(t.slice(-40)))}.`);
+    console.error(`Around the problem: ${JSON.stringify(mask(t.slice(Math.max(0, pos - 40), pos + 40)))}`);
+    console.error('Fix: re-copy the whole downloaded .json file (it starts with { and ends with }) and paste it into the secret again.');
+    process.exit(1);
+  }
+}
+admin.initializeApp({ credential: admin.credential.cert(parseKey(raw)) });
 const db = admin.firestore();
 const appUrl = process.env.APP_URL || '';
 const test = process.env.TEST === 'true';
