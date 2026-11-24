@@ -12,7 +12,13 @@ function parseKey(text) {
     .replace(/[\u201C\u201D]/g, '"').replace(/[\u2018\u2019]/g, "'")
     .replace(/,\s*([}\]])/g, '$1');
   if (t.startsWith("'") && t.endsWith("'")) t = t.slice(1, -1);
-  try { return JSON.parse(t); }
+  // A paste that got cut off after a complete field: close it. Only the first few fields are needed to sign in.
+  if (t.startsWith('{') && !t.endsWith('}')) t = t.replace(/,\s*$/, '') + '\n}';
+  try {
+    const k = JSON.parse(t);
+    if (!k.project_id || !k.private_key || !k.client_email) throw new Error('missing project_id, private_key or client_email');
+    return k;
+  }
   catch (e) {
     // Show the shape around the problem with every letter and digit masked, so nothing secret is printed.
     const m = /position (\d+)/.exec(e.message); const pos = m ? +m[1] : 0;
