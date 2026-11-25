@@ -453,11 +453,11 @@ function renderFree(){
 }
 
 function renderGames(){
-  setHeader("Games", state.fb ? (state.user ? "Shared with your coaches" : "Sign in to add or edit") : "Saved on this phone only");
+  setHeader("Games", state.fb ? "Shared with all coaches" : "Saved on this phone only");
   const todayIso = iso(new Date());
   const upcoming = state.games.filter(g=>g.date>=todayIso).sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time));
   const past = state.games.filter(g=>g.date<todayIso).sort((a,b)=>(b.date+b.time).localeCompare(a.date+a.time));
-  const canEdit = !state.fb || state.user;
+  const canEdit = true;
   const item = g => { const d=fromIso(g.date); return `<div class="game-item" data-id="${esc(g.id)}">
       <div class="gdate"><div class="m">${MON[d.getMonth()]}</div><div class="d">${d.getDate()}</div></div>
       <div style="flex:1"><div style="font-weight:700">${esc(g.team)} ${g.homeAway==="Away"?"@":"vs"} ${esc(g.opponent)}</div>
@@ -466,7 +466,6 @@ function renderGames(){
       ${canEdit?`<button class="btn ghost" style="padding:6px 10px;align-self:center" data-edit="${esc(g.id)}">Edit</button>`:""}</div>`; };
   let html = "";
   if(canEdit) html += `<div class="grid2" style="margin-bottom:12px"><button class="btn" id="addGame">+ Add game</button><button class="btn ghost" id="bulkGame">Paste schedule</button></div>`;
-  else html += `<div class="banner info">Sign in on the Settings tab to add or edit games.</div>`;
   html += `<div class="card"><h2>Upcoming</h2>${upcoming.length?upcoming.map(item).join(""):'<div class="muted small">No upcoming games yet.</div>'}</div>`;
   if(past.length) html += `<div class="card"><h2>Past</h2>${past.slice(0,30).map(item).join("")}</div>`;
   $view.innerHTML = html;
@@ -550,15 +549,7 @@ function renderSettings(){
   let html = `<div class="card"><h2>My team</h2>
     <p class="small muted">Practices in the sheet that contain this word are marked “Yours”.</p>
     <input id="myTeam" value="${esc(state.myTeam)}" placeholder="e.g. basketball"></div>`;
-  html += `<div class="card"><h2>Shared data</h2>`;
-  if(!state.fb) html += `<p class="small">Running in <b>this phone only</b> mode — games you add are saved on this device. Add your Firebase config at the top of <code>index.html</code> so every coach sees the same games.</p>`;
-  else if(state.user) html += `<p class="small">Signed in as <b>${esc(state.user.email)}</b>. Games sync live for everyone.</p><button class="btn ghost" id="signOut">Sign out</button>`;
-  else html += `<p class="small muted">Sign in so you can add and edit games. First time? Enter an email and a password and tap “Create account”.</p>
-    <label>Email</label><input id="email" type="email" autocomplete="username">
-    <label>Password</label><input id="pw" type="password" autocomplete="current-password">
-    <div class="grid2" style="margin-top:12px"><button class="btn ghost" id="signUp">Create account</button><button class="btn" id="signIn">Sign in</button></div>
-    <div id="authMsg" class="small" style="margin-top:8px;color:var(--danger)"></div>`;
-  html += `</div>`;
+  html += `<div class="card"><h2>Shared games</h2><p class="small">${state.fb ? "Games are shared live with every coach who opens this app. Changes show up on everyone's phone within seconds." : "Couldn't connect to the shared database, so games are saved on this phone only for now."}</p></div>`;
   html += `<div class="card"><h2>Week tab name</h2>
     <p class="small muted">The app finds each week's tab by its dates. If the teachers name a tab differently, type its exact name for the week of ${fmtShort(state.weekStart)}.</p>
     <input id="tabOverride" value="${esc(state.overrides[key]||"")}" placeholder="${esc(state.tabNames[key]||"e.g. Nov 30 - Dec 4")}">
@@ -570,16 +561,7 @@ function renderSettings(){
   document.getElementById("myTeam").onchange=e=>{ state.myTeam=e.target.value.trim(); store.set("myTeam",state.myTeam); };
   document.getElementById("refreshNow").onclick=()=>refresh(true);
   document.getElementById("saveTab").onclick=async()=>{ await saveOverride(key, val("tabOverride")); refresh(true); alert("Saved."); };
-  if(state.fb && state.user) document.getElementById("signOut").onclick=()=>state.fb.signOut(state.fb.auth);
-  if(state.fb && !state.user){
-    const go = async create => {
-      const msg = document.getElementById("authMsg"); msg.textContent="";
-      try{ const fn = create ? state.fb.createUserWithEmailAndPassword : state.fb.signInWithEmailAndPassword; await fn(state.fb.auth, val("email"), document.getElementById("pw").value); }
-      catch(e){ msg.textContent = (e.code||e.message||"").replace("auth/","").replace(/-/g," "); }
-    };
-    document.getElementById("signIn").onclick=()=>go(false);
-    document.getElementById("signUp").onclick=()=>go(true);
-  }
+
 }
 
 /* =====================================================================
@@ -588,7 +570,7 @@ function renderSettings(){
 async function saveGame(id, data){
   if(state.fb){
     const {db, doc, setDoc, addDoc, collection, serverTimestamp} = state.fb;
-    const payload = {...data, updatedBy: state.user?.email||"", updatedAt: serverTimestamp()};
+    const payload = {...data, updatedAt: serverTimestamp()};
     if(id) await setDoc(doc(db,"games",id), payload, {merge:true}); else await addDoc(collection(db,"games"), payload);
   } else {
     if(id) state.games = state.games.map(g=>g.id===id?{...g,...data}:g);
@@ -601,7 +583,7 @@ async function deleteGame(id){
   else { state.games = state.games.filter(g=>g.id!==id); store.set("localGames", state.games); }
 }
 async function saveOverride(key, name){
-  if(state.fb && state.user){ const {db, doc, setDoc, deleteDoc} = state.fb; name ? await setDoc(doc(db,"weekTabs",key),{tab:name}) : await deleteDoc(doc(db,"weekTabs",key)); }
+  if(state.fb){ const {db, doc, setDoc, deleteDoc} = state.fb; name ? await setDoc(doc(db,"weekTabs",key),{tab:name}) : await deleteDoc(doc(db,"weekTabs",key)); }
   else { if(name) state.overrides[key]=name; else delete state.overrides[key]; store.set("overrides", state.overrides); }
   if(!name) delete state.tabNames[key];
 }
@@ -618,8 +600,8 @@ async function seedFirebase(){
     const marker = doc(db,"meta",SEED_VERSION);
     if((await getDoc(marker)).exists()) return;
     const batch = writeBatch(db);
-    for(const {id,...g} of SEED_GAMES) batch.set(doc(db,"games",id), {...g, updatedBy:"schedule import"});
-    batch.set(marker, {at: Date.now(), by: state.user?.email||""});
+    for(const {id,...g} of SEED_GAMES) batch.set(doc(db,"games",id), g);
+    batch.set(marker, {at: Date.now()});
     await batch.commit();
   }catch(e){ console.error("seed", e); }
 }
@@ -630,11 +612,9 @@ async function initFirebase(){
     const V = "10.12.2";
     const app = await import(`https://www.gstatic.com/firebasejs/${V}/firebase-app.js`);
     const fs  = await import(`https://www.gstatic.com/firebasejs/${V}/firebase-firestore.js`);
-    const au  = await import(`https://www.gstatic.com/firebasejs/${V}/firebase-auth.js`);
     const fbApp = app.initializeApp(FIREBASE_CONFIG);
     const db = fs.initializeFirestore(fbApp, {localCache: fs.persistentLocalCache()});
-    const auth = au.getAuth(fbApp);
-    state.fb = {db, auth, ...fs, ...au};
+    state.fb = {db, ...fs};
     state.games = [];
     // Until the built-in schedule has been copied into Firebase, show it alongside whatever is there.
     let fbGames = [], seeded = true;
@@ -643,7 +623,7 @@ async function initFirebase(){
       state.games = seeded ? fbGames : [...fbGames, ...SEED_GAMES.filter(g=>!have.has(g.id))];
       render();
     };
-    fs.onSnapshot(fs.doc(db,"meta",SEED_VERSION), d=>{ seeded = d.exists(); mergeGames(); if(!seeded && state.user) seedFirebase(); },
+    fs.onSnapshot(fs.doc(db,"meta",SEED_VERSION), d=>{ seeded = d.exists(); mergeGames(); if(!seeded) seedFirebase(); },
       e=>{ console.error(e); seeded = false; mergeGames(); });
     fs.onSnapshot(fs.collection(db,"games"), snap=>{ fbGames = snap.docs.map(d=>({id:d.id,...d.data()})); mergeGames(); },
       e=>{ console.error(e); state.error = "Couldn't load games from Firebase."; render(); });
@@ -652,11 +632,7 @@ async function initFirebase(){
       state.overrides = Object.fromEntries(snap.docs.map(d=>[d.id,d.data().tab]));
       if(before!==JSON.stringify(state.overrides)) refresh(true);
     }, e=>console.error(e));
-    au.onAuthStateChanged(auth, user=>{
-      state.user = user;
-      if(user) seedFirebase();
-      render();
-    });
+    render();
   }catch(e){ console.error(e); state.error = "Couldn't connect to Firebase."; }
 }
 

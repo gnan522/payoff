@@ -29,8 +29,6 @@ At this point the schedule already works. Games are saved on the phone only unti
 
 ### 2. Firebase (so everyone shares the same games)
 1. Go to console.firebase.google.com. Use your existing project or **Add project** (e.g. `naci-practice`).
-2. **Build → Authentication → Get started → Sign-in method → Email/Password → Enable.**
-3. **Authentication → Settings → Authorized domains → Add domain →** `gnan522.github.io`
 4. **Build → Firestore Database → Create database** (production mode, region `northamerica-northeast2` (Toronto)).
 5. **Firestore → Rules**: replace everything with the contents of `firestore.rules` and click **Publish**.
 6. **Project settings (gear) → General → Your apps → `</>` Web** → register the app → copy the `firebaseConfig` object.
@@ -48,9 +46,9 @@ At this point the schedule already works. Games are saved on the phone only unti
    Commit.
 
 ### 3. iPhone
-Open the link in **Safari → Share → Add to Home Screen**. Each coach opens **Settings** in the app, types an email and password, and taps **Create account**. Anyone with the link can see games; only signed-in coaches can add or edit them.
+Open the link in **Safari → Share → Add to Home Screen**. There is no sign-in. Anyone who opens the link can see the schedule and add, edit or delete games, so share the link only with coaches.
 
-The first time anyone signs in, the built-in basketball and volleyball games are copied into Firebase once. After that, edits and deletions are shared with everyone.
+The built-in basketball and volleyball games are copied into Firebase the first time the app is opened. After that, edits and deletions are shared with everyone.
 
 ## Adding games in bulk
 **Games → Paste schedule**, one game per line:
